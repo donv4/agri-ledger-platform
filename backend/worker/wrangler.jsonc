@@ -1,0 +1,15 @@
+{
+	"name": "agri-ledger-worker",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-08-15",
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "agri_ledger_db",
+			"database_name": "agri-ledger-DB",
+			"database_id": "28b5cf35-5a6f-4338-bb1d-8d1a14b9ce79"
+		}
+	]
+}
