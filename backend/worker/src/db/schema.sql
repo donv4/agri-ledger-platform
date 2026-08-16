@@ -65,3 +65,12 @@ CREATE INDEX IF NOT EXISTS idx_chicken_batches_farm ON chicken_batches(farm_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_farm_date ON expenses(farm_id, date);
 CREATE INDEX IF NOT EXISTS idx_sales_farm_date ON sales_ledger(farm_id, sale_date);
 CREATE INDEX IF NOT EXISTS idx_inventory_farm_item ON available_inventory(farm_id, item_type);
+
+CREATE TABLE IF NOT EXISTS market_inventory (
+    id INTEGER PRIMARY KEY,
+    farm_id INTEGER NOT NULL,
+    item_name TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price_cents INTEGER NOT NULL,
+    FOREIGN KEY(farm_id) REFERENCES farms(id)
+);

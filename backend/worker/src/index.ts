@@ -253,6 +253,25 @@ app.post('/api/hive/inspect', verifyModuleAccess('hive_mind'), async (c) => {
 	}
 });
 
+// 📣 GET ENDPOINT: Fetch live marketplace inventory ledger values from D1
+app.get('/api/market/inventory', verifyModuleAccess('market_sync'), async (c) => {
+	// Read the parameter token directly out of the URL query string lane (?farm_id=101)
+	const farmId = c.req.query('farm_id');
+	
+	try {
+		// Run a fast query execution to fetch all matching asset warehouse rows
+		const { results } = await c.env.agri_ledger_db.prepare(
+			"SELECT * FROM market_inventory WHERE farm_id = ?"
+		).bind(farmId).all();
+		
+		return c.json({ success: true, data: results });
+	} catch (error: any) {
+		console.error("[D1 Market Error]:", error.message);
+		return c.json({ success: false, error: "Failed to read inventory tracker from database.", details: error.message }, 500);
+	}
+});
+
+
 // Add this right above export default app;
 app.get('/test', (c) => c.text('Hono is active on the edge!'));
 
