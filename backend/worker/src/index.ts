@@ -178,6 +178,48 @@ app.get('/api/finance/roi-summary/:farmId', verifyModuleAccess('farm_finance'), 
 	}
 });
 
+// 🟢 GET ENDPOINT: Fetch all active crop rows for a specific farm
+app.get('/api/crop/rows', verifyModuleAccess('crop_cycle'), async (c) => {
+	const farmId = c.req.query('farm_id');
+	
+	try {
+		const { results } = await c.env.agri_ledger_db.prepare(
+			"SELECT * FROM crop_rows WHERE farm_id = ?"
+		).bind(farmId).all();
+		
+		return c.json({ success: true, data: results });
+	} catch (error: any) {
+		return c.json({ success: false, error: "Failed to read crop rows from database.", details: error.message }, 500);
+	}
+});
+
+// 🟤 POST ENDPOINT: Log a brand-new crop row planting event
+app.post('/api/crop/plant', verifyModuleAccess('crop_cycle'), async (c) => {
+	try {
+		const payload = await c.req.json();
+
+		if (!payload.farm_id || !payload.crop_type || !payload.planting_date || !payload.harvest_status) {
+			return c.json({ success: false, error: "Missing required parameters." }, 400);
+		}
+
+		await c.env.agri_ledger_db.prepare(`
+			INSERT INTO crop_rows (farm_id, crop_type, planting_date, harvest_status)
+			VALUES (?, ?, ?, ?);
+		`).bind(
+			payload.farm_id,
+			payload.crop_type,
+			payload.planting_date,
+			payload.harvest_status
+		).run();
+
+		console.log(`[D1 Crops] Successfully planted row: ${payload.crop_type}`);
+		return c.json({ success: true, message: "New crop row logged successfully." });
+	} catch (error: any) {
+		return c.json({ success: false, error: "Database transaction rejected.", details: error.message }, 500);
+	}
+});
+
+
 // Add this right above export default app;
 app.get('/test', (c) => c.text('Hono is active on the edge!'));
 
