@@ -1,22 +1,31 @@
 /// <reference types="@cloudflare/workers-types" />
 import { fromHono } from "chanfana";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 
 // Explicitly define the Env type for Cloudflare infrastructure bindings
 export type Env = {
-	agri_ledger_db: D1Database;
+	agri_ledger_db: D1Database; // Keeps your routes functioning perfectly with zero errors
+	DB: D1Database;             // Matches your wrangler.json file so Cloudflare doesn't fail
 };
 
 // Start a Hono app using our defined Bindings type
 const app = new Hono<{ Bindings: Env }>();
+
+// Enable global CORS so your mobile phone can handshake safely over your custom domain network
+app.use('*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'X-Farm-Id'],
+}));
 
 // backend/worker/src/index.ts
 
 // 🛡️ MULTI-TENANT ACCESS MIDDLEWARE (Streamlined)
 const verifyModuleAccess = (moduleName: string) => {
 	return async (c: any, next: any) => {
-		// Reads from URL query parameters (?farm_id=) or dynamic path variables (:farmId)
-		const farmId = c.req.query('farm_id') || c.req.param('farmId');
+		// Reads from URL query parameters (?farm_id=), path variables (:farmId), OR falling back to the mobile header
+		const farmId = c.req.query('farm_id') || c.req.param('farmId') || c.req.header('X-Farm-Id');
 		
 		if (!farmId) {
 			return c.json({ success: false, error: "Missing required parameter: farm_id" }, 400);
@@ -26,7 +35,7 @@ const verifyModuleAccess = (moduleName: string) => {
 		const subscription = await c.env.agri_ledger_db.prepare(`
 			SELECT status FROM farm_subscriptions 
 			WHERE farm_id = ? AND module_name = ? AND status = 'active'
-		`).bind(farmId, moduleName).first();
+		`).bind(parseInt(farmId, 10), moduleName).first();
 
 		if (!subscription) {
 			return c.json({ 
@@ -39,11 +48,17 @@ const verifyModuleAccess = (moduleName: string) => {
 	};
 };
 
-
-
 // Setup OpenAPI registry
 const openapi = fromHono(app, {
 	docs_url: "/",
+});
+
+app.get('/api/health', (c) => {
+  return c.json({ 
+    status: 'online', 
+    engine: 'Hono.js Edge Worker (Safe Binding Mode)', 
+    runtime: 'Cloudflare' 
+  });
 });
 
 // -------------------------------------------------------------

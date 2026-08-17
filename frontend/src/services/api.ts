@@ -1,7 +1,9 @@
 // frontend/src/services/api.ts
 
-// 🖥️ Your computer's local network IPv4 address (e.g., 192.168.1.15)
-const BASE_URL = 'http://192.168.100.6:8787'; 
+// Update your service base URL configuration to use your live production link:
+const BASE_URL = 'https://api.agri.vibezlabs.com'; 
+const FARM_ID = '101';
+
 
 // ⏳ TIMEOUT SETTING: 3000 milliseconds (3 seconds) max wait time before dropping to local cache
 const TIMEOUT_MS = 3000;
