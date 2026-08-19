@@ -12,9 +12,10 @@ const current = configurations[variant] || configurations.platform;
 
 export default {
   expo: {
+    scheme: 'agriledger',
+    
     name: current.name,
     slug: current.slug,
-    scheme: current.slug, // Clears that Linking console warning banner instantly!
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
@@ -38,7 +39,7 @@ export default {
     },
     extra: {
       APP_VARIANT: variant,
-      REACT_NATIVE_PACKAGER_HOSTNAME: '192.168.100.6', // Explicit local Wi-Fi host target
+      REACT_NATIVE_PACKAGER_HOSTNAME: '192.168.100.6',
       eas: { projectId: 'your-eas-project-id-here' }
     },
     plugins: [['expo-router', { origin: 'https://vibezlabs.com' }]]

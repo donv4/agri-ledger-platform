@@ -71,8 +71,9 @@ export const apiService = {
 
   // 🌿 CropCycle Endpoints
   async getCropRows(farmId: number) {
-    return this.request(`/api/crops?farm_id=${farmId}`, 'GET');
+    return this.request(`/api/crop/rows?farm_id=${farmId}`, 'GET');
   },
+
   async addCropRow(farmId: number, cropType: string, plantingDate: string) {
     return this.request('/api/crops/rows', 'POST', { farm_id: farmId, crop_type: cropType, planting_date: plantingDate });
   },
