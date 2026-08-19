@@ -61,6 +61,32 @@ CREATE TABLE IF NOT EXISTS available_inventory (
   UNIQUE(farm_id, item_type)
 );
 
+-- Marketplace Independent Listings (Both manually created or auto-harvested from other apps)
+CREATE TABLE IF NOT EXISTS marketplace_listings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    farm_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    available_stock INTEGER NOT NULL,
+    price_cents INTEGER NOT NULL,
+    status TEXT DEFAULT 'active', -- 'active', 'sold_out', 'suspended'
+    source_module TEXT DEFAULT 'independent', -- 'independent', 'crop_cycle', 'coop_manager'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Consumer Interaction Orders Ledger
+CREATE TABLE IF NOT EXISTS marketplace_orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    listing_id INTEGER NOT NULL,
+    consumer_name TEXT NOT NULL,
+    consumer_phone TEXT NOT NULL,
+    quantity_purchased INTEGER NOT NULL,
+    total_amount_cents INTEGER NOT NULL,
+    order_status TEXT DEFAULT 'pending', -- 'pending', 'completed', 'cancelled'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(listing_id) REFERENCES marketplace_listings(id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_chicken_batches_farm ON chicken_batches(farm_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_farm_date ON expenses(farm_id, date);
 CREATE INDEX IF NOT EXISTS idx_sales_farm_date ON sales_ledger(farm_id, sale_date);

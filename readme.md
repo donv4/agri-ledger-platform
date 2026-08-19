@@ -1,11 +1,19 @@
-🏗️ Architecture Blueprint & Core Components
+# 🌾 AgriLedger Platform Ecosystem (vibezlabs.com)
+
+Welcome to the **AgriLedger Platform**, a high-performance, multi-tenant agricultural enterprise suite engineered under the **VibezLabs** software portfolio. The platform splits features across independent, modular applications that scale individually, support multi-tenant entitlement security gates, and compile into completely standalone applications with unique homescreen launchers and icons.
+
+---
+
+## 🏗️ Architecture Blueprint & Core Components
+
+```text
        [ Physical Smartphone Device ] (Samsung Galaxy S20+)
                      │
          Expo SDK 57 Mobile Frontend
-      (with 3s Network Abort Timeout Guard)
+     (Dynamic Variant Compilation Target)
                      │
         ┌────────────┴────────────┐
-   [Wi-Fi Connection]       [Offline Status]
+   [Wi-Fi / Mobile Connection]   [Offline Data Status]
         │                         │
   Live API Requests        Persistent Queue
         │                   (AsyncStorage)
@@ -14,109 +22,66 @@
    (Hono Routing Engine)    (Syncs on Network Return)
         │
    SQLite Database
-   (Cloudflare D1 Sandbox Tables)
+   (Cloudflare D1 Production Tables)
+```
 
-Cloudflare D1 Local SQLite Database: Handles indexing multi-tenant farm identification data, modular access subscriptions, crops, flock batches, apiary log histories, and market item inventory quantities.
+### Core Architecture Capabilities
+* **Dynamic Monorepo Compilation Variant Switching:** Controlled via a custom `app.config.js` environment target variable framework (`APP_VARIANT`). Compiles fully isolated single-purpose apps (`com.vibezlabs.coopmanager`, `com.vibezlabs.cropcycle`, etc.) with dedicated application icon sets and launcher packages out of the same unified codebase folder.
+* **Hono.js Edge Worker Engine (Custom Domain Runtime):** Powers the server framework deployed directly live onto your custom cloud domain at `https://vibezlabs.com`.
+* **Robust Multi-Tenant Security Interceptor Middleware:** Employs a custom asynchronous request fallback buffer stream parsing system (`verifyModuleAccess`) that extracts `farm_id` checks across URL variables, raw payload bodies, or headers seamlessly to enforce strict feature licensing gates.
+* **3-Second Client Abort Timeout Guard & AsyncStorage Cache:** Intercepts hanging threads in low-signal rural barn zones, cutting requests off after 3000ms to block application crashes, appending dropped data sequences down to device memory storage arrays for silent cloud synchronization retry threads.
+* **Independent Marketplace App Engine:** A standalone multi-user marketplace allowing direct consumer purchase order operations alongside automated farmer data harvest ingestion adapters.
 
-Hono.js Edge Worker Engine: Manages REST API routing and handles strict multi-tenant feature entitlement authorization gates via global security middleware filters.
+---
 
-Expo SDK 57 Cross-Platform App: Native file-system routing engine (expo-router) styled using optimized layout components with immediate rendering fallback triggers.
+## 🚀 Instant Restoration & Launch Commands
 
-3-Second Network Abort Timeout Guard: Intercepts hanging HTTP threads in low-signal rural barn zones, cutting requests off after 3000ms to block application crashes.
+When restarting this workspace in your next session, execute these commands inside your separate VS Code terminal panels:
 
-AsyncStorage Persistent Local Storage Cache Queue: Catches data payloads dropped during network timeouts, locks them into hardware storage arrays sequentially, and syncs them automatically to the cloud upon connection recovery.
+### 🟢 Panel 1: Backend Deployment and Database Operations
+```bash
+# Navigate to the backend worker subdirectory
+cd backend/worker
 
-🗄️ Database Schema Blueprint (backend/worker/src/db/schema.sql)
+# Force a clean remote database schema synchronization pass
+npx wrangler d1 execute agri-ledger-prod-db --remote --file=src/db/schema.sql
 
--- 1. Multi-Tenant Farm Accounts
-CREATE TABLE IF NOT EXISTS farms (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    owner_email TEXT NOT NULL UNIQUE
-);
+# Seed / Restore active tenant authorizations for testing (Farm 101)
+npx wrangler d1 execute agri-ledger-prod-db --remote --command="INSERT OR IGNORE INTO farm_subscriptions (farm_id, module_name, status) VALUES (101, 'coop_manager', 'active'), (101, 'farm_finance', 'active'), (101, 'crop_cycle', 'active'), (101, 'market_sync', 'active'), (101, 'hive_mind', 'active');"
 
--- 2. Subscription Feature-Gating Matrix
-CREATE TABLE IF NOT EXISTS farm_subscriptions (
-    id INTEGER PRIMARY KEY,
-    farm_id INTEGER NOT NULL,
-    module_name TEXT NOT NULL, -- 'coop_manager', 'crop_cycle', 'hive_mind', 'farm_finance', 'market_sync'
-    status TEXT NOT NULL,      -- 'active', 'inactive'
-    FOREIGN KEY(farm_id) REFERENCES farms(id),
-    UNIQUE(farm_id, module_name)
-);
+# Seed chicken batch schema tables and test data configurations
+npx wrangler d1 execute agri-ledger-prod-db --remote --command="DROP TABLE IF EXISTS chicken_batches; CREATE TABLE chicken_batches (id INTEGER PRIMARY KEY AUTOINCREMENT, farm_id INTEGER NOT NULL, batch_name TEXT NOT NULL, bird_count INTEGER NOT NULL); INSERT INTO chicken_batches (farm_id, batch_name, bird_count) VALUES (101, 'Layer Flock Alpha (Rhode Island Reds)', 250);"
 
--- 3. Poultry Flock Management Data Rows
-CREATE TABLE IF NOT EXISTS crop_rows (
-    id INTEGER PRIMARY KEY,
-    farm_id INTEGER NOT NULL,
-    crop_type TEXT NOT NULL,
-    planting_date TEXT NOT NULL,
-    harvest_status TEXT NOT NULL, -- 'planted', 'growing', 'harvesting', 'completed'
-    FOREIGN KEY(farm_id) REFERENCES farms(id)
-);
+# Deploy backend updates live to ://vibezlabs.com
+npx wrangler deploy
+```
 
--- 4. Financial Cost Operations Ledger (Saved strictly in integer CENTS)
-CREATE TABLE IF NOT EXISTS expenses (
-    id INTEGER PRIMARY KEY,
-    farm_id INTEGER NOT NULL,
-    amount_cents INTEGER NOT NULL,
-    category TEXT NOT NULL,
-    date TEXT NOT NULL,
-    notes TEXT,
-    FOREIGN KEY(farm_id) REFERENCES farms(id)
-);
+### 🔵 Panel 2: Launching and Compiling Mobile Framework Targets
+```bash
+# Navigate to your mobile frontend directory
+cd frontend
 
--- 5. Warehouse Stock Inventory Valuation Layout
-CREATE TABLE IF NOT EXISTS market_inventory (
-    id INTEGER PRIMARY KEY,
-    farm_id INTEGER NOT NULL,
-    item_name TEXT NOT NULL,
-    quantity INTEGER NOT NULL,
-    unit_price_cents INTEGER NOT NULL,
-    FOREIGN KEY(farm_id) REFERENCES farms(id)
-);
+# Launch the combined master platform suite (All-in-One Dashboard view)
+npm run start:platform
 
-⚡ Active Network Mapping References
+# Launch CoopManager as an isolated, standalone app target
+npm run start:coop
 
-To maintain active handshakes across both servers and physical smartphone devices over your local Wi-Fi router network, configuration parameters are mapped explicitly as follows:PC IPv4 Loopback Local Endpoint: http://127.0.0.1:8787 (Used for pure local browser diagnostics)Active Hardware Wi-Fi Dev Bridge IP: http://192.168.100.6:8787 (Configured inside frontend/src/services/api.ts to link your smartphone over your local router network)Wrangler Network Listening Tunnel: 0.0.0.0:8787 (Instructs your machine's firewall to allow inbound connection handshakes safely)
+# Launch Farm Finance as an isolated, standalone app target
+npm run start:finance
 
-🚀 Instant Restoration & Launch Commands
+# Launch Independent Marketplace Storefront as a standalone app target
+npm run start:market
 
-If you need to spin up or restart this environment cleanly in a future workspace session, execute these commands inside your separate VS Code terminal panels:
+# Note: Remember to press 's' in the Metro Bundler terminal to target the Expo Go runtime!
+```
 
-# 1. Step completely into your worker codebase subdirectory
-cd C:\Users\donv\Documents\agri-ledger-platform\backend\worker
+---
 
-# 2. Re-apply the SQLite D1 schema blueprints to your local database sandbox
-npx wrangler d1 execute agri-ledger-DB --local --file=src/db/schema.sql
+## 🎨 Current Workspace Feature Matrix Status
 
-# 3. Inject Test Farm 101 production module entitlements into your sandbox table
-npx wrangler d1 execute agri-ledger-DB --local --command="INSERT OR IGNORE INTO farm_subscriptions (farm_id, module_name, status) VALUES (101, 'coop_manager', 'active'), (101, 'farm_finance', 'active'), (101, 'crop_cycle', 'active'), (101, 'market_sync', 'active');"
-
-# 4. Inject Initial Warehouse Inventory Seeds (100 Cartons of Eggs @ $5.00 each)
-npx wrangler d1 execute agri-ledger-DB --local --command="INSERT OR IGNORE INTO market_inventory (id, farm_id, item_name, quantity, unit_price_cents) VALUES (1, 101, 'Fresh Organic Eggs (Dozen)', 100, 500);"
-
-# 5. Fire up your edge server and open port 8787 wide to inbound Wi-Fi device requests
-npx wrangler dev --ip 0.0.0.0 --port 8787
-
-
-🔵 Panel 2: Launching the Frontend Mobile UI Framework
-
-# 1. Navigate straight into your mobile layout root folder workspace
-cd C:\Users\donv\Documents\agri-ledger-platform\frontend
-
-# 2. Boot up your Metro compiler engine and completely flush out old compilation cache tables
-npx expo start -c
-
-Action: Open Expo Go on your Samsung S20+, scan the fresh QR code generated in your terminal panel, and watch your completed agribusiness platform run!
-
-
-🎨 Current Workspace Feature Matrix Check
-
-Security Redirections: Free-tier profiles automatically bounce off locked modules and reroute down to the upsell.tsx premium monetization pricing card view.
-
-Coop Manager (🐔): Queries local databases dynamically to render live bird metrics.Crop Cycle (🌿): Tracks growing states for Roma Tomatoes and Sweet Corn.
-
-Hive Mind (🐝): Inspects apiary design logs (Hive Alpha / Beta).
-
-Farm Finance ROI Dashboard (💰): Automatically calculates aggregate expenses against live Market Sync inventory values to show exact profit margins.
+* **Security & Routing Controls:** Root layouts read active compilation tokens to completely trim unavailable navigations or redirect standalone builds past the suite index.
+* **CoopManager:** Completed. Interacts with remote D1 tables to query flock targets and logs daily layers metrics.
+* **Farm Finance ROI Dashboard:** Completed. Automatically tracks ledger expense operations using safe integer cent conversions to prevent floating-point calculation lags.
+* **Market Sync:** Completed. Shifted into a fully featured, independent community marketplace supporting dynamic consumer "Buy 1" order deduction engines and developer-level `as any` type bypass safety hooks.
+* **CropCycle & Hive Mind:** Outlined. Next up in active application UI implementation layout cycles.

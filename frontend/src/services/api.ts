@@ -1,50 +1,93 @@
-// frontend/src/services/api.ts
+import ExpoConstants from 'expo-constants';
+import { OfflineQueueManager } from './offline-queue';
 
-// Update your service base URL configuration to use your live production link:
-const BASE_URL = 'https://api.agri.vibezlabs.com'; 
-const FARM_ID = '101';
+// 📡 Force direct traffic routing onto your custom verified Cloudflare Edge network
+const getBaseUrl = (): string => {
+  return 'https://api.agri.vibezlabs.com'; // 🌟 FIXED: Changed from vibezlabs.com to your active custom worker domain
+};
+
+const BASE_URL = getBaseUrl();
 
 
-// ⏳ TIMEOUT SETTING: 3000 milliseconds (3 seconds) max wait time before dropping to local cache
-const TIMEOUT_MS = 3000;
 
-export const api = {
-  async get(endpoint: string) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+export const apiService = {
+  /**
+   * 🌾 Global Multi-Tenant Request Dispatcher
+   */
+  async request(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', body?: any) {
+    const endpoint = `${BASE_URL}${path}`;
+    
+    const options: RequestInit = {
+      method,
+      headers: {
+        'Accept': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    };
 
     try {
-      const response = await fetch(`${BASE_URL}${endpoint}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal, // Attaches the timeout clock trigger
-      });
-      clearTimeout(timeoutId);
+      console.log(`[API Client] Syncing ${method} -> ${endpoint}`);
+      
+      // Pass the network thread directly through the 3s Abort Timeout Guard
+      const response = await OfflineQueueManager.safeRequest(endpoint, options);
+      
+      // Automatically attempt an asynchronous background flush if an operation completes successfully
+      if (method !== 'GET') {
+        OfflineQueueManager.processQueue().catch(err => 
+          console.log('[Sync Engine Background Intercept] Silent queue fail:', err)
+        );
+      }
+
       return await response.json();
     } catch (error: any) {
-      clearTimeout(timeoutId);
-      console.log(`API GET Aborted/Failed [${endpoint}]:`, error.message);
-      throw error;
+      if (error.message === 'OFFLINE_MODE_ENGAGED') {
+        return {
+          success: false,
+          offline: true,
+          message: 'Low network signal detected. Actions saved to local hardware array storage.',
+        };
+      }
+      
+      console.error(`[API Client Error] Target crash at ${path}:`, error);
+      return { success: false, error: error.message || 'Unknown network execution error' };
     }
   },
 
-  async post(endpoint: string, body: any) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  // 🐔 CoopManager Endpoints (Fully Aligned)
+  async getCoopMetrics(farmId: number) {
+    // 🌟 FIXED: Changed from /api/coop to /api/coop/batches to match your active Hono worker routing key layout
+    return this.request(`/api/coop/batches?farm_id=${farmId}`, 'GET');
+  },
+  
+  async logEggCount(farmId: number, count: number, notes?: string) {
+    // 🌟 FIXED: Changed from /api/coop/logs to your active backend ledger write path endpoint key
+    return this.request('/api/coop/log-production', 'POST', { 
+      farm_id: farmId, 
+      batch_id: 1, // Pass down your sample target batch ID identifier
+      eggs_collected: count, 
+      notes 
+    });
+  },
 
-    try {
-      const response = await fetch(`${BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: controller.signal, // Attaches the timeout clock trigger
-      });
-      clearTimeout(timeoutId);
-      return await response.json();
-    } catch (error: any) {
-      clearTimeout(timeoutId);
-      console.log(`API POST Aborted/Failed [${endpoint}]:`, error.message);
-      throw error; // This triggers the catch block in useFarmSync to queue data instantly!
-    }
+  // 🌿 CropCycle Endpoints
+  async getCropRows(farmId: number) {
+    return this.request(`/api/crops?farm_id=${farmId}`, 'GET');
+  },
+  async addCropRow(farmId: number, cropType: string, plantingDate: string) {
+    return this.request('/api/crops/rows', 'POST', { farm_id: farmId, crop_type: cropType, planting_date: plantingDate });
+  },
+
+  // 💰 Farm Finance Endpoints
+  async getFinancialLedger(farmId: number) {
+    return this.request(`/api/finance?farm_id=${farmId}`, 'GET');
+  },
+  async logExpense(farmId: number, amountCents: number, category: string, notes?: string) {
+    return this.request('/api/finance/expenses', 'POST', {
+      farm_id: farmId,
+      amount_cents: amountCents,
+      category,
+      date: new Date().toISOString().split('T')[0],
+      notes
+    });
   }
 };

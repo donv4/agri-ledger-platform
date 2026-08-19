@@ -11,7 +11,7 @@ export default function FinanceLayout() {
         headerTitleStyle: { fontWeight: 'bold' },
       }}
     >
-      <Stack.Screen name="expenses" options={{ title: 'Expense Ledger Input' }} />
+      <Stack.Screen name="index" options={{ title: 'Expense Ledger Input' }} />
       <Stack.Screen name="roi" options={{ title: 'Real-Time ROI Analysis' }} />
     </Stack>
   );

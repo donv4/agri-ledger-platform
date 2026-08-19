@@ -18,13 +18,19 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "cross-env": "^7.0.3",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "start:platform": "cross-env APP_VARIANT=platform expo start --clear",
+    "start:coop": "cross-env APP_VARIANT=coop expo start --clear",
+    "start:crops": "cross-env APP_VARIANT=crops expo start --clear",
+    "start:hive": "cross-env APP_VARIANT=hive expo start --clear",
+    "start:finance": "cross-env APP_VARIANT=finance expo start --clear"
   },
   "private": true
 }

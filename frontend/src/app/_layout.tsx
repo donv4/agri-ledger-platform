@@ -1,65 +1,79 @@
-// src/app/_layout.tsx
-import React, { useEffect } from 'react';
-import { Slot, useSegments, useRouter } from 'expo-router';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { SubscriptionProvider, useSubscription } from '../context/SubscriptionContext';
+import React from 'react';
+import ExpoConstants from 'expo-constants';
+import { Tabs } from 'expo-router';
 
-function RouteGuard() {
-  const segments = useSegments();
-  const router = useRouter();
-  const { hasAccess, isLoading } = useSubscription();
+export default function DynamicRootLayout() {
+  // Read the active application compilation variant from app.config.js
+  // Default to 'platform' if no variant environment flag is set
+  const appVariant = ExpoConstants.expoConfig?.extra?.APP_VARIANT || 'platform';
 
-  useEffect(() => {
-    if (isLoading) return;
-
-    // Detect which feature folder directory the user is currently opening
-    const activeFolder = segments[0];
-
-    // Map application folder subdirectories to our explicit database module strings
-    const folderToModuleMap: Record<string, 'coop_manager' | 'crop_cycle' | 'hive_mind' | 'farm_finance' | 'market_sync'> = {
-      'coop-manager': 'coop_manager',
-      'crop-cycle': 'crop_cycle',
-      'hive-mind': 'hive_mind',
-      'farm-finance': 'farm_finance',
-      'market-sync': 'market_sync',
-    };
-
-    const requestedModule = folderToModuleMap[activeFolder];
-
-    // 🔒 SECURITY CHECK
-    // If they attempt to open an enterprise directory that they do not own, redirect them instantly
-    if (requestedModule && !hasAccess(requestedModule)) {
-      router.replace('/upsell');
-    }
-  }, [segments, isLoading]);
-
-  // Display a clean loading indicator while checking local hardware cache storage files
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2E7D32" />
-      </View>
-    );
-  }
-
-  // Render the child screen safely if entitlements clear the security gate
-  return <Slot />;
-}
-
-// Global App Root (Simulating authentication as test farm instance 101)
-export default function RootLayout() {
   return (
-    <SubscriptionProvider farmId={101}>
-      <RouteGuard />
-    </SubscriptionProvider>
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: '#1B5E20', // Sage green branding anchor accent
+        tabBarInactiveTintColor: '#757575',
+        tabBarStyle: {
+          backgroundColor: '#ffffff',
+          borderTopWidth: 1,
+          borderTopColor: '#e0e0e0',
+          elevation: 4,
+        },
+      }}
+    >
+      {/* 🏠 Main Dashboard / Entry Hub Layout Control */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: appVariant === 'platform' ? 'AgriLedger Hub' : 'Dashboard',
+          // Always visible as it acts as the basic entry landing screen
+        }}
+      />
+
+      {/* 🐔 CoopManager Route Module Separation Gate */}
+      <Tabs.Screen
+        name="coop-manager"
+        options={{
+          title: 'CoopManager',
+          href: (appVariant === 'platform' || appVariant === 'coop') ? '/coop-manager' : null,
+        }}
+      />
+
+      {/* 🌿 CropCycle Route Module Separation Gate */}
+      <Tabs.Screen
+        name="crop-cycle"
+        options={{
+          title: 'CropCycle',
+          href: (appVariant === 'platform' || appVariant === 'crops') ? '/crop-cycle' : null,
+        }}
+      />
+
+      {/* 💰 Farm Finance Route Module Separation Gate */}
+      <Tabs.Screen
+        name="finance"
+        options={{
+          title: 'Farm Finance',
+          href: (appVariant === 'platform' || appVariant === 'finance') ? '/finance' : null,
+        }}
+      />
+
+      {/* 🐝 Hive Mind Route Module Separation Gate */}
+      <Tabs.Screen
+        name="hive-mind"
+        options={{
+          title: 'Hive Mind',
+          href: (appVariant === 'platform' || appVariant === 'hive') ? '/hive-mind' : null,
+        }}
+      />
+
+      {/* 📦 Market Sync Hidden Internal Data Channel Route */}
+      <Tabs.Screen
+        name="market-sync"
+        options={{
+          title: 'Market Sync',
+          // Hide from bottom tab bars across all variations, access purely programmatically
+          href: null, 
+        }}
+      />
+    </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-});
