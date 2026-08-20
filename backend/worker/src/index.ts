@@ -602,6 +602,31 @@ app.post('/api/hive/remove', verifyModuleAccess('hive_mind'), async (c) => {
 	}
 });
 
+// 🍯 POST ENDPOINT: Quick-adjust honey super counts directly from card increment buttons
+app.post('/api/hive/adjust-supers', verifyModuleAccess('hive_mind'), async (c) => {
+	try {
+		const payload = c.get('parsedBody') || await c.req.json(); // { hive_id: 1, adjustment: 1 or -1, farm_id: 101 }
+
+		if (!payload.hive_id || !payload.adjustment || !payload.farm_id) {
+			return c.json({ success: false, error: "Missing adjustment parameters." }, 400);
+		}
+
+		await c.env.agri_ledger_db.prepare(`
+			UPDATE hive_logs 
+			SET honey_super_count = MAX(0, honey_super_count + ?) 
+			WHERE id = ? AND farm_id = ?;
+		`).bind(
+			parseInt(payload.adjustment, 10),
+			parseInt(payload.hive_id, 10),
+			parseInt(payload.farm_id, 10)
+		).run();
+
+		return c.json({ success: true, message: "Super count adjusted." });
+	} catch (error: any) {
+		return c.json({ success: false, error: error.message }, 500);
+	}
+});
+
 // -------------------------------------------------------------
 // 🟢 SERVICE DIAGNOSTIC HEALTH CHECK
 // -------------------------------------------------------------

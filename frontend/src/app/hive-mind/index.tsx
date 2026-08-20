@@ -141,6 +141,32 @@ export default function HiveMindIndex() {
                   </Text>
                 </View>
 
+                {/* 🌟 INTEGRATED: QUICK HONEY SUPER INCREMENT DIALS */}
+                <Text style={styles.drawerSectionTitle}>📦 Manage Honey Supers</Text>
+                <View style={styles.superCounterRow}>
+                  <Text style={styles.superCounterLabel}>Installed Box Count: {item.honey_super_count}</Text>
+                  <View style={styles.counterBtnGroup}>
+                    <TouchableOpacity 
+                      style={styles.counterBtn} 
+                      onPress={async () => {
+                        const res = await apiService.request('/api/hive/adjust-supers', 'POST', { hive_id: item.id, adjustment: -1, farm_id: TEST_FARM_ID });
+                        if (res.success) fetchHiveLogs();
+                      }}
+                    >
+                      <Text style={styles.counterBtnText}>-</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.counterBtn} 
+                      onPress={async () => {
+                        const res = await apiService.request('/api/hive/adjust-supers', 'POST', { hive_id: item.id, adjustment: 1, farm_id: TEST_FARM_ID });
+                        if (res.success) fetchHiveLogs();
+                      }}
+                    >
+                      <Text style={styles.counterBtnText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 <Text style={styles.drawerSectionTitle}>⚙️ Colony Adjustments</Text>
                 <View style={styles.actionButtonGroup}>
                   {item.condition !== 'healthy' && (
@@ -176,6 +202,7 @@ export default function HiveMindIndex() {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
   headerBlock: { backgroundColor: '#ECEFF1', padding: 20, borderBottomWidth: 1, borderBottomColor: '#CFD8DC' },
@@ -200,5 +227,11 @@ const styles = StyleSheet.create({
   formContainer: { padding: 16, marginTop: 10, paddingBottom: 40 },
   inputField: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 14 },
   submitButton: { backgroundColor: '#37474F', padding: 16, borderRadius: 8, alignItems: 'center', elevation: 2 },
-  submitText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' }
+  submitText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' },
+  superCounterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 12, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: '#F0F0F0' },
+  superCounterLabel: { fontSize: 13, fontWeight: '600', color: '#37474F' },
+  counterBtnGroup: { flexDirection: 'row', gap: 6 },
+  counterBtn: { backgroundColor: '#37474F', width: 36, height: 36, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
+  counterBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+
 });
