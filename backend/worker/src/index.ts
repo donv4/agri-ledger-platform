@@ -9,8 +9,12 @@ export type Env = {
 	DB: D1Database;             // Matches your wrangler.json file so Cloudflare doesn't fail
 };
 
+export type Variables = {
+	parsedBody: any; // Registers the body proxy channel so TypeScript doesn't throw errors
+};
+
 // Start a Hono app using our defined Bindings type
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // 🌐 Enable global CORS so your mobile phone can handshake safely over your custom domain network
 app.use('*', cors({
@@ -220,30 +224,46 @@ app.get('/api/crop/rows', verifyModuleAccess('crop_cycle'), async (c) => {
 	}
 });
 
+// 🟤 POST ENDPOINT: Log a brand-new crop row planting event with optimization matrices
 app.post('/api/crop/plant', verifyModuleAccess('crop_cycle'), async (c) => {
 	try {
-		const payload = await c.req.json();
+		// Extract payload parameters or utilize context parsedBody from your middleware fallback
+		const payload = c.get('parsedBody') || await c.req.json();
 
 		if (!payload.farm_id || !payload.crop_type || !payload.planting_date || !payload.harvest_status) {
-			return c.json({ success: false, error: "Missing required parameters." }, 400);
+			return c.json({ success: false, error: "Missing required basic parameters." }, 400);
 		}
 
+		// ⏳ SAFE DATE FORMATTING SANITIZER
+		// Converts array configurations (e.g. from new Date strings) back into a plain text string format cleanly
+		let cleanDate = Array.isArray(payload.planting_date) ? payload.planting_date[0] : payload.planting_date;
+		if (cleanDate.includes('T')) {
+			cleanDate = cleanDate.split('T')[0];
+		}
+
+		// ⚡ ATOMIC INJECTION TRANSACTION
+		// Safely inserts both original parameters and your new real-world farming optimization columns
 		await c.env.agri_ledger_db.prepare(`
-			INSERT INTO crop_rows (farm_id, crop_type, planting_date, harvest_status)
-			VALUES (?, ?, ?, ?);
+			INSERT INTO crop_rows (farm_id, crop_type, planting_date, harvest_status, days_to_maturity, companion_crop, soil_notes)
+			VALUES (?, ?, ?, ?, ?, ?, ?);
 		`).bind(
 			parseInt(payload.farm_id, 10),
-			payload.crop_type,
-			payload.planting_date,
-			payload.harvest_status
+			payload.crop_type.trim(),
+			cleanDate,
+			payload.harvest_status,
+			parseInt(payload.days_to_maturity, 10) || 75, // Default to 75 days if empty
+			payload.companion_crop ? payload.companion_crop.trim() : null,
+			payload.soil_notes ? payload.soil_notes.trim() : null
 		).run();
 
-		console.log(`[D1 Crops] Successfully planted row: ${payload.crop_type}`);
-		return c.json({ success: true, message: "New crop row logged successfully." });
+		console.log(`[D1 Crops Engine] Successfully logged optimized bed row: ${payload.crop_type}`);
+		return c.json({ success: true, message: "New optimized cultivation row logged successfully." });
 	} catch (error: any) {
+		console.error("[D1 Crops Write Exception]:", error.message);
 		return c.json({ success: false, error: "Database transaction rejected.", details: error.message }, 500);
 	}
 });
+
 
 // -------------------------------------------------------------
 // 🐝 MODULE ENDPOINT: HIVE MIND
@@ -355,6 +375,86 @@ app.post('/api/market/harvest-sync', verifyModuleAccess('market_sync'), async (c
     return c.json({ success: false, error: "Auto-harvest pipeline breakdown.", details: err.message }, 500);
   }
 });
+
+// -------------------------------------------------------------
+// 🌿 CROP CYCLE MUTATION ENDPOINTS: ADJUSTMENTS & REMOVALS
+// -------------------------------------------------------------
+
+// 🔄 POST ENDPOINT: Update the current growing or harvest status of an active row
+app.post('/api/crop/update-status', verifyModuleAccess('crop_cycle'), async (c) => {
+	try {
+		const payload = c.get('parsedBody') || await c.req.json();
+
+		if (!payload.row_id || !payload.harvest_status || !payload.farm_id) {
+			return c.json({ success: false, error: "Missing required modification parameters." }, 400);
+		}
+
+		// ⚡ Execute update row state modification query inside D1
+		await c.env.agri_ledger_db.prepare(`
+			UPDATE crop_rows 
+			SET harvest_status = ? 
+			WHERE id = ? AND farm_id = ?;
+		`).bind(
+			payload.harvest_status,
+			parseInt(payload.row_id, 10),
+			parseInt(payload.farm_id, 10)
+		).run();
+
+		console.log(`[D1 Crops Engine] Row ID ${payload.row_id} advanced to status: ${payload.harvest_status}`);
+		return c.json({ success: true, message: `Crop row status updated successfully to ${payload.harvest_status}.` });
+	} catch (error: any) {
+		console.error("[D1 Status Update Error]:", error.message);
+		return c.json({ success: false, error: "Failed to update crop row status.", details: error.message }, 500);
+	}
+});
+
+// 🪓 POST ENDPOINT: Completely clear out / delete an active growing crop bed row
+app.post('/api/crop/remove', verifyModuleAccess('crop_cycle'), async (c) => {
+	try {
+		const payload = c.get('parsedBody') || await c.req.json();
+
+		if (!payload.row_id || !payload.farm_id) {
+			return c.json({ success: false, error: "Missing required removal identifiers." }, 400);
+		}
+
+		// ⚡ Execute drop query statement over the specified row primary ID key
+		await c.env.agri_ledger_db.prepare(`
+			DELETE FROM crop_rows 
+			WHERE id = ? AND farm_id = ?;
+		`).bind(
+			parseInt(payload.row_id, 10),
+			parseInt(payload.farm_id, 10)
+		).run();
+
+		console.log(`[D1 Crops Engine] Successfully purged Row ID ${payload.row_id} from cloud tables.`);
+		return c.json({ success: true, message: "Cultivation bed row cleared and removed successfully." });
+	} catch (error: any) {
+		console.error("[D1 Row Purge Error]:", error.message);
+		return c.json({ success: false, error: "Failed to clear crop row from the database.", details: error.message }, 500);
+	}
+});
+
+// 🔍 GET ENDPOINT: Bulk dictionary matching lookup list for visual frontend dropdown entries
+app.get('/api/crop/dictionary-lookup', async (c) => {
+	const queryName = c.req.query('name');
+	if (!queryName || queryName.trim().length < 2) {
+		return c.json({ success: true, data: [] });
+	}
+
+	try {
+		// Pull up to 4 potential crop dictionary matches to populate our visual dashboard menu
+		const matches = await c.env.agri_ledger_db.prepare(`
+			SELECT id, name, default_dtm, companion 
+			FROM crop_encyclopedia 
+			WHERE LOWER(name) LIKE LOWER(?) LIMIT 4;
+		`).bind(`%${queryName.trim()}%`).all();
+
+		return c.json({ success: true, data: matches.results || [] });
+	} catch (error: any) {
+		return c.json({ success: false, error: error.message }, 500);
+	}
+});
+
 
 // -------------------------------------------------------------
 // 🟢 SERVICE DIAGNOSTIC HEALTH CHECK
